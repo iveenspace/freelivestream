@@ -1,22 +1,30 @@
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-
 const app = express();
+const http = require('http');
 const server = http.createServer(app);
+const { Server } = require('socket.io');
 const io = new Server(server);
 
-// Serve your frontend files from the 'public' folder
-app.use(express.static(path.join(__dirname, 'public')));
-
+// Signaling: Forward messages between peers
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
 
-    // Signaling: Forward messages between peers
-    socket.on('offer', (sdp) => socket.broadcast.emit('offer', sdp));
-    socket.on('answer', (sdp) => socket.broadcast.emit('answer', sdp));
-    socket.on('ice-candidate', (candidate) => socket.broadcast.emit('ice-candidate', candidate));
+    // Relay the "offer" from one peer to another
+    socket.on('offer', (data) => {
+        socket.broadcast.emit('offer', data);
+    });
+
+    // Relay the "answer"
+    socket.on('answer', (data) => {
+        socket.broadcast.emit('answer', data);
+    });
+
+    // Relay "ICE candidates" (network path information)
+    socket.on('ice-candidate', (data) => {
+        socket.broadcast.emit('ice-candidate', data);
+    });
 });
 
-server.listen(3000, () => console.log('Server running on http://localhost:3000'));
+server.listen(3000, () => {
+    console.log('Signaling server running on http://localhost:3000');
+});
