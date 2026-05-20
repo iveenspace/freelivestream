@@ -1,328 +1,487 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRTC Streaming + Live Translation</title>
-    <style>
-        body { 
-            font-family: system-ui, sans-serif; 
-            background: #121212; 
-            color: white; 
-            text-align: center; 
-            padding: 2rem; 
-            margin: 0; 
-        }
-        .container { 
-            max-width: 800px; 
-            margin: 0 auto; 
-        }
-        
-        /* Role Selection Container Layers */
-        #roleSelection {
-            position: relative;
-            z-index: 9999; 
-            margin-top: 2rem;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebRTC Streaming + Live Translation</title>
 
-        /* Video Container for Fullscreen and Subtitle Layout */
-        .video-container { 
-            position: relative; 
-            width: 100%; 
-            max-height: 450px; 
-            background: #000; 
-            border-radius: 8px; 
-            margin-top: 1rem; 
-            border: 2px solid #333;
-            overflow: hidden;
-        }
-        video { 
-            width: 100%; 
-            height: 100%; 
-            display: block; 
-        }
-        
-        /* Subtitle Overlay styling */
-        .subtitles {
-            position: absolute;
-            bottom: 25px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-size: 20px;
-            font-weight: bold;
-            max-width: 80%;
-            text-align: center;
-            pointer-events: none; 
-            display: none;
-            border: 1px solid #444;
-        }
+<style>
+    body{
+        font-family:system-ui,sans-serif;
+        background:#121212;
+        color:white;
+        margin:0;
+        padding:2rem;
+        text-align:center;
+    }
 
-        /* Controls styling */
-        .controls { 
-            margin-top: 15px; 
-            display: flex; 
-            justify-content: center; 
-            gap: 10px; 
-        }
-        button { 
-            padding: 14px 28px; 
-            font-size: 16px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            border: none; 
-            border-radius: 6px; 
-            position: relative;
-            z-index: 10000; /* Keeps buttons in the absolute foreground */
-        }
-        .btn-streamer { background: #9146ff; color: white; }
-        .btn-streamer:hover { background: #772ce8; }
-        .btn-viewer { background: #00ea87; color: #121212; }
-        .btn-viewer:hover { background: #00c672; }
-        .btn-control { background: #444; color: white; }
-        .btn-control:hover { background: #555; }
-        .hidden { display: none; }
-    </style>
+    .container{
+        max-width:900px;
+        margin:auto;
+    }
+
+    .video-container{
+        position:relative;
+        width:100%;
+        background:black;
+        border-radius:10px;
+        overflow:hidden;
+        margin-top:20px;
+        border:2px solid #333;
+    }
+
+    video{
+        width:100%;
+        display:block;
+    }
+
+    .subtitles{
+        position:absolute;
+        bottom:20px;
+        left:50%;
+        transform:translateX(-50%);
+        background:rgba(0,0,0,0.8);
+        padding:10px 20px;
+        border-radius:8px;
+        max-width:80%;
+        font-size:20px;
+        font-weight:bold;
+        display:none;
+    }
+
+    .controls{
+        margin-top:20px;
+        display:flex;
+        justify-content:center;
+        gap:10px;
+        flex-wrap:wrap;
+    }
+
+    button{
+        padding:12px 22px;
+        border:none;
+        border-radius:6px;
+        font-size:16px;
+        font-weight:bold;
+        cursor:pointer;
+    }
+
+    .btn-streamer{
+        background:#9146ff;
+        color:white;
+    }
+
+    .btn-viewer{
+        background:#00ea87;
+        color:black;
+    }
+
+    .btn-control{
+        background:#444;
+        color:white;
+    }
+
+    .hidden{
+        display:none;
+    }
+</style>
 </head>
+
 <body>
-    <div class="container">
-        <h1>WebRTC Live Stream + Translation</h1>
-        
-        <div id="roleSelection">
-            <p>Choose your role to begin:</p>
-            <button class="btn-streamer" id="chooseStreamer" onclick="joinAs('streamer')">I am the Streamer</button>
-            <button class="btn-viewer" id="chooseViewer" onclick="joinAs('viewer')">I am a Viewer</button>
-        </div>
 
-        <div id="videoInterface" class="hidden">
-            <h2 id="statusMessage">Connecting to server...</h2>
-            <button class="btn-streamer hidden" id="startScreenShare">Start Screen Share</button>
-            
-            <div class="video-container" id="videoWrapper">
-                <video id="videoPlayer" autoplay playsinline></video>
-                <div id="subtitlesBox" class="subtitles">Listening for Thai audio...</div>
-            </div>
+<div class="container">
 
-            <div class="controls">
-                <button class="btn-control hidden" id="fullscreenBtn">Go Fullscreen</button>
-            </div>
-        </div>
+    <h1>WebRTC Live Stream + Translation</h1>
+
+    <div id="roleSelection">
+        <p>Select your role</p>
+
+        <button class="btn-streamer" onclick="joinAs('streamer')">
+            I am the Streamer
+        </button>
+
+        <button class="btn-viewer" onclick="joinAs('viewer')">
+            I am a Viewer
+        </button>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        console.log("JavaScript engine successfully initialized!");
+    <div id="videoInterface" class="hidden">
 
-        let socket;
-        try {
-            socket = io();
-        } catch (e) {
-            console.error("Socket.io initialization failed. Make sure you use http://localhost:3000:", e);
+        <h2 id="statusMessage">Connecting...</h2>
+
+        <div class="controls">
+            <button id="startScreenShare" class="btn-streamer hidden">
+                Start Screen Share
+            </button>
+
+            <button id="fullscreenBtn" class="btn-control hidden">
+                Fullscreen
+            </button>
+        </div>
+
+        <div class="video-container" id="videoWrapper">
+            <video id="videoPlayer" autoplay playsinline></video>
+
+            <div id="subtitlesBox" class="subtitles">
+                Waiting for translation...
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+
+const socket = io();
+
+let peerConnection;
+let localStream;
+let recognition;
+let userRole = "";
+
+const rtcConfig = {
+    iceServers: [
+        {
+            urls: "stun:stun.l.google.com:19302"
+        }
+    ]
+};
+
+const roleSelection = document.getElementById("roleSelection");
+const videoInterface = document.getElementById("videoInterface");
+const statusMessage = document.getElementById("statusMessage");
+const startScreenShareBtn = document.getElementById("startScreenShare");
+const fullscreenBtn = document.getElementById("fullscreenBtn");
+const videoPlayer = document.getElementById("videoPlayer");
+const subtitlesBox = document.getElementById("subtitlesBox");
+const videoWrapper = document.getElementById("videoWrapper");
+
+function joinAs(role){
+
+    userRole = role;
+
+    roleSelection.classList.add("hidden");
+    videoInterface.classList.remove("hidden");
+    fullscreenBtn.classList.remove("hidden");
+
+    statusMessage.textContent =
+        `Joined as ${role.toUpperCase()}`;
+
+    socket.emit("join", role);
+
+    if(role === "streamer"){
+        startScreenShareBtn.classList.remove("hidden");
+    }
+}
+
+/* =========================
+   FULLSCREEN
+========================= */
+
+fullscreenBtn.addEventListener("click", async () => {
+
+    try{
+
+        if(!document.fullscreenElement){
+            await videoWrapper.requestFullscreen();
+        }else{
+            await document.exitFullscreen();
         }
 
-        let peerConnection;
-        let localStream;
-        let userRole = '';
-        let recognition; 
+    }catch(err){
+        console.error(err);
+    }
 
-        const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+});
 
-        const roleSelection = document.getElementById('roleSelection');
-        const videoInterface = document.getElementById('videoInterface');
-        const statusMessage = document.getElementById('statusMessage');
-        const startScreenShareBtn = document.getElementById('startScreenShare');
-        const videoPlayer = document.getElementById('videoPlayer');
-        const videoWrapper = document.getElementById('videoWrapper');
-        const fullscreenBtn = document.getElementById('fullscreenBtn');
-        const subtitlesBox = document.getElementById('subtitlesBox');
+/* =========================
+   SCREEN SHARE
+========================= */
 
-        // --- ROLE SELECTION FUNCTION WITH BUILT-IN DIAGNOSTICS ---
-        function joinAs(role) {
-            alert("Button clicked successfully! Setting up interface for: " + role);
-            
-            userRole = role;
-            roleSelection.classList.add('hidden');
-            videoInterface.classList.remove('hidden');
-            fullscreenBtn.classList.remove('hidden');
-            statusMessage.textContent = `Joined as ${role.toUpperCase()}. Waiting for peer...`;
-            
-            if (socket) {
-                socket.emit('join', role);
-            } else {
-                statusMessage.textContent = "Warning: Not connected to backend server.";
-            }
+startScreenShareBtn.addEventListener("click", async () => {
 
-            if (role === 'streamer') {
-                startScreenShareBtn.classList.remove('hidden');
-            }
-        }
+    try{
 
-        // --- FULLSCREEN LOGIC ---
-        fullscreenBtn.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                videoWrapper.requestFullscreen().catch(err => {
-                    alert(`Error trying to enable fullscreen: ${err.message}`);
-                });
-            } else {
-                document.exitFullscreen();
-            }
+        localStream =
+            await navigator.mediaDevices.getDisplayMedia({
+                video:true,
+                audio:true
+            });
+
+        videoPlayer.srcObject = localStream;
+        videoPlayer.muted = true;
+
+        statusMessage.textContent =
+            "Screen sharing started";
+
+        localStream.getTracks().forEach(track => {
+
+            track.onended = () => {
+                socket.emit("stream-ended");
+                cleanupStream();
+            };
+
         });
 
-        // --- STREAMER LOGIC ---
-        startScreenShareBtn.addEventListener('click', async () => {
-            try {
-                localStream = await navigator.mediaDevices.getDisplayMedia({ 
-                    video: true, 
-                    audio: true 
-                });
-                videoPlayer.srcObject = localStream;
-                videoPlayer.muted = true; 
-                statusMessage.textContent = "Screen captured. Ready for viewers. | Current Viewers: 0";
-            } catch (err) {
-                console.error("Screen capture failed:", err);
-                alert("Failed to capture screen. Please grant permissions.");
-            }
-        });
+    }catch(err){
 
-        if (socket) {
-            // When a viewer joins, start connection setup
-            socket.on('viewer-joined', async () => {
-                if (!localStream) return;
-                initiateWebRTCConnection();
-            });
+        console.error(err);
 
-            // Dynamic dashboard metric tracking for the streamer
-            socket.on('stats-update', (data) => {
-                if (userRole === 'streamer') {
-                    const trackingMessage = localStream ? "Streaming Live!" : "Screen captured. Ready for viewers.";
-                    statusMessage.textContent = `${trackingMessage} | Current Viewers: ${data.viewerCount}`;
-                }
-            });
+        alert(
+            "Screen sharing failed. Please allow permissions."
+        );
+    }
+
+});
+
+/* =========================
+   WEBRTC
+========================= */
+
+async function createPeerConnection(){
+
+    peerConnection =
+        new RTCPeerConnection(rtcConfig);
+
+    peerConnection.onicecandidate = event => {
+
+        if(event.candidate){
+            socket.emit(
+                "ice-candidate",
+                event.candidate
+            );
+        }
+    };
+
+    peerConnection.ontrack = event => {
+
+        videoPlayer.srcObject = event.streams[0];
+
+        subtitlesBox.style.display = "block";
+
+        statusMessage.textContent =
+            "Connected to live stream";
+
+        startTranslation();
+
+    };
+
+    return peerConnection;
+}
+
+/* =========================
+   STREAMER EVENTS
+========================= */
+
+socket.on("viewer-joined", async () => {
+
+    if(userRole !== "streamer") return;
+    if(!localStream) return;
+
+    await createPeerConnection();
+
+    localStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, localStream);
+    });
+
+    const offer =
+        await peerConnection.createOffer();
+
+    await peerConnection.setLocalDescription(
+        offer
+    );
+
+    socket.emit("offer", offer);
+
+});
+
+/* =========================
+   VIEWER EVENTS
+========================= */
+
+socket.on("offer", async offer => {
+
+    if(userRole !== "viewer") return;
+
+    await createPeerConnection();
+
+    await peerConnection.setRemoteDescription(
+        new RTCSessionDescription(offer)
+    );
+
+    const answer =
+        await peerConnection.createAnswer();
+
+    await peerConnection.setLocalDescription(
+        answer
+    );
+
+    socket.emit("answer", answer);
+
+});
+
+socket.on("answer", async answer => {
+
+    if(userRole !== "streamer") return;
+
+    if(peerConnection){
+
+        await peerConnection.setRemoteDescription(
+            new RTCSessionDescription(answer)
+        );
+    }
+
+});
+
+socket.on("ice-candidate", async candidate => {
+
+    try{
+
+        if(peerConnection){
+
+            await peerConnection.addIceCandidate(
+                new RTCIceCandidate(candidate)
+            );
         }
 
-        async function initiateWebRTCConnection() {
-            peerConnection = new RTCPeerConnection(rtcConfig);
-            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-            
-            peerConnection.onicecandidate = (event) => {
-                if (event.candidate && socket) socket.emit('ice-candidate', event.candidate);
-            };
-            
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-            if (socket) socket.emit('offer', offer);
+    }catch(err){
+        console.error(err);
+    }
+
+});
+
+socket.on("stream-ended", () => {
+
+    cleanupStream();
+
+    statusMessage.textContent =
+        "Stream has ended";
+
+});
+
+/* =========================
+   CLEANUP
+========================= */
+
+function cleanupStream(){
+
+    if(videoPlayer.srcObject){
+        videoPlayer.srcObject = null;
+    }
+
+    subtitlesBox.style.display = "none";
+
+    if(peerConnection){
+        peerConnection.close();
+        peerConnection = null;
+    }
+
+    if(recognition){
+
+        recognition.onend = null;
+
+        try{
+            recognition.stop();
+        }catch(e){}
+    }
+}
+
+/* =========================
+   TRANSLATION
+========================= */
+
+function startTranslation(){
+
+    const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+    if(!SpeechRecognition){
+
+        subtitlesBox.textContent =
+            "Speech recognition unsupported";
+
+        return;
+    }
+
+    recognition = new SpeechRecognition();
+
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.lang = "th-TH";
+
+    recognition.onresult = async event => {
+
+        let transcript = "";
+
+        for(let i = event.resultIndex;
+            i < event.results.length;
+            i++){
+
+            transcript +=
+                event.results[i][0].transcript;
         }
 
-        // --- VIEWER LOGIC & LIVE TRANSLATION ---
-        if (socket) {
-            socket.on('offer', async (offer) => {
-                if (userRole !== 'viewer') return;
-                
-                statusMessage.textContent = "Receiving stream offer...";
-                peerConnection = new RTCPeerConnection(rtcConfig);
+        if(transcript.trim()){
 
-                peerConnection.ontrack = (event) => {
-                    videoPlayer.srcObject = event.streams[0];
-                    statusMessage.textContent = "Live Stream Connected!";
-                    
-                    subtitlesBox.style.display = 'block';
-                    startTranslation();
-                };
+            subtitlesBox.textContent =
+                "Translating...";
 
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) socket.emit('ice-candidate', event.candidate);
-                };
+            const translated =
+                await translateThaiToEnglish(
+                    transcript
+                );
 
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-                socket.emit('answer', answer);
-            });
-
-            // Cleanup routine for viewers if the host terminates the broadcast session
-            socket.on('stream-ended', () => {
-                if (userRole === 'viewer') {
-                    statusMessage.textContent = "The host has stopped sharing their screen.";
-                    videoPlayer.srcObject = null;
-                    subtitlesBox.style.display = 'none';
-                    if (recognition) {
-                        recognition.onend = null; // Prevent it from auto-restarting
-                        recognition.stop();
-                    }
-                }
-            });
+            subtitlesBox.textContent =
+                translated;
         }
+    };
 
-        // Web Speech API for Transcription
-        function startTranslation() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                subtitlesBox.textContent = "[Translation Error: Browser speech recognition unsupported]";
-                return;
-            }
+    recognition.onerror = err => {
+        console.error(err);
+    };
 
-            recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = 'th-TH'; 
+    recognition.onend = () => {
 
-            recognition.onresult = async (event) => {
-                let thaiTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        thaiTranscript += event.results[i][0].transcript;
-                    }
-                }
-
-                if (thaiTranscript.trim().length > 0) {
-                    subtitlesBox.textContent = "Translating...";
-                    const englishTranslation = await translateThaiToEnglish(thaiTranscript);
-                    subtitlesBox.textContent = englishTranslation;
-                }
-            };
-
-            recognition.onerror = (event) => {
-                console.error("Speech API error:", event.error);
-            };
-
-            recognition.onend = () => { 
-                if (userRole === 'viewer' && videoPlayer.srcObject) {
-                    recognition.start(); 
-                }
-            };
+        if(videoPlayer.srcObject){
             recognition.start();
         }
+    };
 
-        async function translateThaiToEnglish(text) {
-            try {
-                const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=th&tl=en&dt=t&q=${encodeURIComponent(text)}`);
-                const data = await response.json();
-                return data[0].map(item => item[0]).join('');
-            } catch (error) {
-                console.error("Translation failed:", error);
-                return "[Translation Timeout]";
-            }
-        }
+    recognition.start();
+}
 
-        // --- COMMON SIGNALING LOGIC ---
-        if (socket) {
-            socket.on('answer', async (answer) => {
-                if (userRole === 'streamer' && peerConnection) {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                }
-            });
+/* =========================
+   GOOGLE TRANSLATE
+========================= */
 
-            socket.on('ice-candidate', async (candidate) => {
-                if (peerConnection) {
-                    try {
-                        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                    } catch (e) { console.error(e); }
-                }
-            });
-        }
-    </script>
+async function translateThaiToEnglish(text){
+
+    try{
+
+        const response = await fetch(
+            `https://translate.googleapis.com/translate_a/single?client=gtx&sl=th&tl=en&dt=t&q=${encodeURIComponent(text)}`
+        );
+
+        const data = await response.json();
+
+        return data[0]
+            .map(item => item[0])
+            .join("");
+
+    }catch(err){
+
+        console.error(err);
+
+        return "[Translation Failed]";
+    }
+}
+
+</script>
+
 </body>
 </html>
